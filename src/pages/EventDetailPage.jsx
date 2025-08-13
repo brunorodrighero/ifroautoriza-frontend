@@ -6,63 +6,66 @@ import apiClient from '../api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 
-// ===== Funções de API (aderindo estritamente ao backend) =====
+// ===== Funções de API Corrigidas =====
 
-// Busca os detalhes de um evento específico (rota protegida)
 const fetchEventDetails = async (eventoId) => {
   const { data } = await apiClient.get(`/eventos/${eventoId}`);
   return data;
 };
 
-// Busca todas as autorizações de um evento (rota protegida)
+// CORREÇÃO 1: Usando a rota original E adicionando o 'params' que o backend exige.
 const fetchAuthorizations = async (eventoId) => {
-  const { data } = await apiClient.get(`/autorizacoes/eventos/${eventoId}/autorizacoes`);
+  const { data } = await apiClient.get(`/autorizacoes/eventos/${eventoId}/autorizacoes`, {
+    params: { event_id: eventoId }
+  });
   return data;
 };
 
-// Atualiza o status de uma autorização (rota protegida)
 const updateAuthorizationStatus = async ({ autorizacaoId, status, motivo }) => {
   const { data } = await apiClient.patch(`/autorizacoes/${autorizacaoId}/status`, { status, motivo });
   return data;
 };
 
-// Pré-cadastra um novo aluno (rota protegida)
 const preregisterStudent = async ({ eventoId, studentData }) => {
     const { data } = await apiClient.post(`/autorizacoes/eventos/${eventoId}/pre-cadastrar`, studentData);
     return data;
 }
 
 // ===== Componente da Página =====
-
 const EventDetailPage = () => {
-  const { eventoId } = useParams();
+  const { eventoId: eventoIdFromParams } = useParams();
+  const eventoId = parseInt(eventoIdFromParams, 10);
   const queryClient = useQueryClient();
+  
   const [rejectionModal, setRejectionModal] = useState({ isOpen: false, autorizacaoId: null, motivo: '' });
   const [preregisterModal, setPreregisterModal] = useState({ isOpen: false, nome_aluno: '', matricula_aluno: '' });
 
-  // Busca os dados do evento e das autorizações
+  const isIdValid = !isNaN(eventoId);
+
   const { data: event, isLoading: isLoadingEvent, error: errorEvent } = useQuery({
     queryKey: ['eventDetails', eventoId],
     queryFn: () => fetchEventDetails(eventoId),
+    enabled: isIdValid,
+    retry: false,
   });
 
   const { data: authorizations, isLoading: isLoadingAuths, error: errorAuths } = useQuery({
     queryKey: ['authorizations', eventoId],
     queryFn: () => fetchAuthorizations(eventoId),
+    enabled: isIdValid,
+    retry: false,
   });
 
-  // Mutation para atualizar o status da autorização
   const statusMutation = useMutation({
     mutationFn: updateAuthorizationStatus,
     onSuccess: (data) => {
-      toast.success(`Autorização ${data.status === 'aprovado' ? 'aprovada' : 'rejeitada'} com sucesso!`);
+      toast.success(`Autorização ${data.status === 'aprovado' ? 'aprovada' : 'rejeitada'}!`);
       queryClient.invalidateQueries({ queryKey: ['authorizations', eventoId] });
       setRejectionModal({ isOpen: false, autorizacaoId: null, motivo: '' });
     },
     onError: (error) => toast.error(error.response?.data?.detail || 'Erro ao atualizar status.'),
   });
 
-  // Mutation para pré-cadastrar um novo aluno
   const preregisterMutation = useMutation({
       mutationFn: preregisterStudent,
       onSuccess: () => {
@@ -70,7 +73,16 @@ const EventDetailPage = () => {
           queryClient.invalidateQueries({ queryKey: ['authorizations', eventoId] });
           setPreregisterModal({ isOpen: false, nome_aluno: '', matricula_aluno: '' });
       },
-      onError: (error) => toast.error(error.response?.data?.detail || "Erro ao pré-cadastrar aluno."),
+      onError: (error) => {
+        const errorDetail = error.response?.data?.detail;
+        let errorMsg = "Erro ao pré-cadastrar aluno.";
+        if (typeof errorDetail === 'string') {
+          errorMsg = errorDetail;
+        } else if (Array.isArray(errorDetail) && errorDetail[0]?.msg) {
+          errorMsg = errorDetail[0].msg;
+        }
+        toast.error(errorMsg);
+      },
   });
 
   const handleApprove = (autorizacaoId) => {
@@ -95,16 +107,21 @@ const EventDetailPage = () => {
 
   const handlePreregisterSubmit = (e) => {
     e.preventDefault();
+    // CORREÇÃO 2: Formatando o payload como o backend espera.
+    const payload = {
+      alunos: [
+        {
+          nome_aluno: preregisterModal.nome_aluno,
+          matricula_aluno: preregisterModal.matricula_aluno || null
+        }
+      ]
+    };
     preregisterMutation.mutate({
         eventoId,
-        studentData: {
-            nome_aluno: preregisterModal.nome_aluno,
-            matricula_aluno: preregisterModal.matricula_aluno || null
-        }
+        studentData: payload
     });
   }
 
-  // Objeto para estilização dos status
   const statusStyles = {
     'pré-cadastrado': { text: 'Pré-cadastrado', bg: 'bg-gray-100', textColor: 'text-gray-800' },
     'submetido': { text: 'Submetido', bg: 'bg-yellow-100', textColor: 'text-yellow-800' },
@@ -116,8 +133,15 @@ const EventDetailPage = () => {
     return <div className="flex justify-center items-center h-screen"><LoadingSpinner /></div>;
   }
   
-  if (errorEvent || errorAuths) {
-    return <div className="container mx-auto p-8 text-center"><p className="text-red-500">Erro ao carregar dados do evento.</p><Link to="/dashboard" className="text-blue-600 hover:underline mt-4 inline-block">Voltar para o Dashboard</Link></div>;
+  if (errorEvent || errorAuths || !isIdValid) {
+    return (
+        <div className="container mx-auto p-8 text-center">
+            <p className="text-red-500">Erro ao carregar dados do evento. Verifique se o link está correto.</p>
+            <Link to="/dashboard" className="text-blue-600 hover:underline mt-4 inline-block">
+                &larr; Voltar para o Dashboard
+            </Link>
+        </div>
+    );
   }
 
   return (
@@ -127,11 +151,18 @@ const EventDetailPage = () => {
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">{event?.titulo}</h1>
-        <p className="text-gray-600 mt-2">{event?.descricao}</p>
-        <div className="flex flex-col sm:flex-row sm:space-x-4 text-sm text-gray-500 mt-4">
-          <span>📅 {new Date(event?.data_evento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
-          <span>📍 {event?.local_evento}</span>
+        <div className="flex flex-col sm:flex-row justify-between items-start">
+            <div>
+                <h1 className="text-3xl font-bold text-gray-800">{event?.titulo}</h1>
+                <p className="text-gray-600 mt-2">{event?.descricao}</p>
+                <div className="flex flex-col sm:flex-row sm:space-x-4 text-sm text-gray-500 mt-4">
+                    <span>📅 {new Date(event?.data_evento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                    <span>📍 {event?.local_evento}</span>
+                </div>
+            </div>
+            <Link to={`/evento/chamada/${eventoId}`} className="mt-4 sm:mt-0 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded text-sm">
+                Ir para Chamada
+            </Link>
         </div>
       </div>
 
@@ -174,7 +205,7 @@ const EventDetailPage = () => {
                          </a>
                       </>
                     )}
-                    {(auth.status === 'aprovado' || auth.status === 'rejeitado') && auth.email_aluno && (
+                    {(auth.status === 'aprovado' || auth.status === 'rejeitado') && auth.caminho_arquivo && (
                          <a href={`${apiClient.defaults.baseURL}/autorizacoes/${auth.id}/arquivo`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900">
                             Ver Arquivo
                          </a>
@@ -192,24 +223,26 @@ const EventDetailPage = () => {
       </div>
 
       <Modal isOpen={rejectionModal.isOpen} onClose={() => setRejectionModal({ isOpen: false, autorizacaoId: null, motivo: '' })} title="Rejeitar Autorização">
-        <div className="space-y-4">
-            <p className="text-sm text-gray-600">Por favor, informe o motivo da rejeição. Esta informação será enviada por e-mail para o responsável.</p>
-            <textarea
-                value={rejectionModal.motivo}
-                onChange={(e) => setRejectionModal({ ...rejectionModal, motivo: e.target.value })}
-                rows="3"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                placeholder="Ex: Assinatura do responsável não confere."
-            ></textarea>
-            <div className="flex justify-end space-x-2 pt-2">
-                <button type="button" onClick={() => setRejectionModal({ isOpen: false, autorizacaoId: null, motivo: '' })} className="py-2 px-4 rounded-md text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200">
-                    Cancelar
-                </button>
-                <button onClick={handleReject} disabled={statusMutation.isPending} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300">
-                    {statusMutation.isPending ? 'Confirmando...' : 'Confirmar Rejeição'}
-                </button>
+        <form onSubmit={(e) => { e.preventDefault(); handleReject(); }}>
+            <div className="space-y-4">
+                <p className="text-sm text-gray-600">Por favor, informe o motivo da rejeição. Esta informação será enviada por e-mail para o responsável.</p>
+                <textarea
+                    value={rejectionModal.motivo}
+                    onChange={(e) => setRejectionModal({ ...rejectionModal, motivo: e.target.value })}
+                    rows="3"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                    placeholder="Ex: Assinatura do responsável não confere."
+                ></textarea>
+                <div className="flex justify-end space-x-2 pt-2">
+                    <button type="button" onClick={() => setRejectionModal({ isOpen: false, autorizacaoId: null, motivo: '' })} className="py-2 px-4 rounded-md text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200">
+                        Cancelar
+                    </button>
+                    <button type="submit" disabled={statusMutation.isPending} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300">
+                        {statusMutation.isPending ? 'Confirmando...' : 'Confirmar Rejeição'}
+                    </button>
+                </div>
             </div>
-        </div>
+        </form>
       </Modal>
 
         <Modal isOpen={preregisterModal.isOpen} onClose={() => setPreregisterModal({ isOpen: false, nome_aluno: '', matricula_aluno: '' })} title="Pré-cadastrar Aluno">
