@@ -6,14 +6,13 @@ import apiClient from '../api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 
-// ===== Funções de API Corrigidas =====
-
+// ===== Funções de API =====
 const fetchEventDetails = async (eventoId) => {
   const { data } = await apiClient.get(`/eventos/${eventoId}`);
   return data;
 };
 
-// CORREÇÃO 1: Usando a rota original E adicionando o 'params' que o backend exige.
+// MANTIDO: A versão que funciona para carregar a página
 const fetchAuthorizations = async (eventoId) => {
   const { data } = await apiClient.get(`/autorizacoes/eventos/${eventoId}/autorizacoes`, {
     params: { event_id: eventoId }
@@ -26,8 +25,11 @@ const updateAuthorizationStatus = async ({ autorizacaoId, status, motivo }) => {
   return data;
 };
 
+// CORRIGIDO: Função de pré-cadastro com URL e payload corretos
 const preregisterStudent = async ({ eventoId, studentData }) => {
-    const { data } = await apiClient.post(`/autorizacoes/eventos/${eventoId}/pre-cadastrar`, studentData);
+    const { data } = await apiClient.post(`/autorizacoes/eventos/${eventoId}/pre-cadastrar`, studentData, {
+        params: { event_id: eventoId }
+    });
     return data;
 }
 
@@ -105,16 +107,12 @@ const EventDetailPage = () => {
     });
   };
 
+  // CORRIGIDO: Payload simplificado conforme especificação da API
   const handlePreregisterSubmit = (e) => {
     e.preventDefault();
-    // CORREÇÃO 2: Formatando o payload como o backend espera.
     const payload = {
-      alunos: [
-        {
-          nome_aluno: preregisterModal.nome_aluno,
-          matricula_aluno: preregisterModal.matricula_aluno || null
-        }
-      ]
+      nome_aluno: preregisterModal.nome_aluno,
+      matricula_aluno: preregisterModal.matricula_aluno || null
     };
     preregisterMutation.mutate({
         eventoId,
