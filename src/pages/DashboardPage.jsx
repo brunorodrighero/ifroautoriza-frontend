@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react'; // Importe o useState
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import apiClient from '../api';
 import { useAuth } from '../hooks/useAuth';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import CreateEventModal from '../components/common/CreateEventModal'; // Importe o novo modal
 
 const fetchEvents = async () => {
   const { data } = await apiClient.get('/eventos/');
@@ -12,6 +13,8 @@ const fetchEvents = async () => {
 
 const DashboardPage = () => {
   const { logout, user } = useAuth();
+  const [isModalOpen, setModalOpen] = useState(false); // Estado para controlar a visibilidade do modal
+
   const { data: events, isLoading, error } = useQuery({
     queryKey: ['events'],
     queryFn: fetchEvents,
@@ -30,10 +33,14 @@ const DashboardPage = () => {
       </header>
       
       <div className="mb-6">
-        <button className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+        {/* Adicione o evento onClick para abrir o modal */}
+        <button onClick={() => setModalOpen(true)} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
           + Criar Novo Evento
         </button>
       </div>
+
+      {/* Renderize o componente do modal */}
+      <CreateEventModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} />
 
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold mb-4 text-gray-700">Seus Eventos</h2>

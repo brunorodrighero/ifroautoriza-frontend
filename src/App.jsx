@@ -6,7 +6,7 @@ import PublicEventPage from './pages/PublicEventPage';
 import EventDetailPage from './pages/EventDetailPage';
 import AttendancePage from './pages/AttendancePage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import { useAuth } from './hooks/useAuth';
+import { useAuth } from './hooks/useAuth'; // Caminho corrigido
 
 function App() {
   const { isAuthenticated } = useAuth();
