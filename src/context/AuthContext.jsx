@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import toast from 'react-hot-toast';
 import apiClient from '../api';
-import { AuthContext } from './AuthContextContext';
+
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -14,7 +15,7 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         const decoded = jwtDecode(token);
         if (decoded.exp * 1000 > Date.now()) {
-          setUser({ email: decoded.sub, tipo: decoded.tipo }); // Assumindo que o tipo está no token
+          setUser({ email: decoded.sub, tipo: decoded.tipo || 'professor' });
         } else {
           localStorage.removeItem('authToken');
           setUser(null);
@@ -46,7 +47,7 @@ export const AuthProvider = ({ children }) => {
       const { access_token } = response.data;
       localStorage.setItem('authToken', access_token);
       const decoded = jwtDecode(access_token);
-      setUser({ email: decoded.sub, tipo: decoded.tipo });
+      setUser({ email: decoded.sub, tipo: decoded.tipo || 'professor' });
       toast.success('Login realizado com sucesso!');
       return true;
     } catch (error) {
@@ -75,4 +76,13 @@ export const AuthProvider = ({ children }) => {
       {!loading && children}
     </AuthContext.Provider>
   );
+};
+
+// Hook customizado para consumir o contexto
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
+  }
+  return context;
 };
