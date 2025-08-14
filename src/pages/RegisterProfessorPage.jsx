@@ -38,6 +38,11 @@ const RegisterProfessorPage = () => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="p-8 max-w-md w-full bg-white rounded-lg shadow-md">
+        <div className="mb-4">
+            <Link to="/eventos" className="text-blue-600 hover:underline text-sm">
+            &larr; Voltar para a lista de eventos
+            </Link>
+        </div>
         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">Cadastro de Professor</h1>
         <p className="text-center text-sm text-gray-600 mb-4">
           Use seu e-mail institucional @ifro.edu.br para criar uma conta.

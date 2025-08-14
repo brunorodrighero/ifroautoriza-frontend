@@ -27,7 +27,6 @@ const submitPreregistered = async ({ autorizacaoId, formData }) => {
 };
 
 const submitSelfRegistration = async ({ eventoId, formData }) => {
-  // CORREÇÃO AQUI: "eventos" (plural) foi trocado por "evento" (singular)
   const { data } = await apiClient.post(`/autorizacoes/evento/${eventoId}/inscrever-se`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
@@ -145,8 +144,20 @@ const PublicEventDetailPage = () => {
     );
   };
   
-  if (isLoadingEvent) return <div className="flex justify-center items-center h-screen"><LoadingSpinner /></div>;
-  if (errorEvent) return <div className="container mx-auto p-8 text-center"><p className="text-red-500">Evento não encontrado.</p></div>;
+  if (isLoadingEvent || isLoadingStudents) {
+    return <div className="flex justify-center items-center h-screen"><LoadingSpinner /></div>;
+  }
+
+  if (errorEvent) {
+    return (
+        <div className="container mx-auto p-8 text-center">
+            <p className="text-red-500">Evento não encontrado. Verifique se o link está correto.</p>
+            <Link to="/eventos" className="text-blue-600 hover:underline mt-4 inline-block">
+                &larr; Voltar para a lista de eventos
+            </Link>
+        </div>
+    );
+  }
 
   if (submissionSuccess) {
     return (
@@ -161,7 +172,12 @@ const PublicEventDetailPage = () => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 py-12">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 py-12 px-4">
+      <div className="w-full max-w-lg mb-4">
+        <Link to="/eventos" className="text-blue-600 hover:underline text-sm">
+          &larr; Voltar para a lista de eventos
+        </Link>
+      </div>
       <div className="p-8 max-w-lg w-full bg-white rounded-lg shadow-md">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-800">{event.titulo}</h1>
