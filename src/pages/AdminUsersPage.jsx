@@ -9,7 +9,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 import { useAuth } from '../hooks/useAuth';
 
-// Funções da API para interagir com o endpoint de usuários
+// Funções da API para interagir com o endpoint de usuários teste
 const fetchUsers = async () => {
   const { data } = await apiClient.get('/usuarios/');
   return data;
