@@ -8,7 +8,7 @@
     "dev": "npm-run-all --parallel dev:vite tailwind:watch",
     "dev:vite": "vite",
     "tailwind:watch": "npx @tailwindcss/cli -i ./src/input.css -o ./src/output.css --watch",
-    "build": "npx @tailwindcss/cli -i ./src/input.css -o ./src/output.css && vite build",
+    "build": "npx @tailwindcss/cli -i ./src/input.css -o ./src/output.css && vite build && cp dist/index.html dist/404.html",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
