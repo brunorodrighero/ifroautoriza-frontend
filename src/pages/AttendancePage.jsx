@@ -15,7 +15,13 @@ const fetchAuthorizationsForAttendance = async (eventoId) => {
 };
 
 const markAttendance = async ({ autorizacaoId, presente }) => {
-  const { data } = await apiClient.patch(`/autorizacoes/${autorizacaoId}/presenca`, { presente });
+  // O segundo argumento é o corpo da requisição (nulo neste caso)
+  // O terceiro argumento é o objeto de configuração, onde passamos os 'params'
+  const { data } = await apiClient.patch(
+    `/autorizacoes/${autorizacaoId}/presenca`, 
+    null, // Corpo da requisição é vazio
+    { params: { presente } } // Dados enviados como query parameters
+  );
   return data;
 };
 

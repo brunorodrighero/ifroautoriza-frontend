@@ -1,7 +1,7 @@
 import React from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { useAuth } from '../hooks/useAuth'; // Caminho corrigido
+import { useAuth } from '../hooks/useAuth';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
 
 const LoginSchema = Yup.object().shape({
@@ -68,6 +68,13 @@ const LoginPage = () => {
           Não tem uma conta?{' '}
           <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
             Cadastre-se
+          </Link>
+        </p>
+        {/* Link adicionado para a página pública */}
+        <p className="mt-2 text-center text-sm text-gray-600">
+          Ou{' '}
+          <Link to="/eventos" className="font-medium text-blue-600 hover:text-blue-500">
+            veja a lista de eventos públicos
           </Link>
         </p>
       </div>

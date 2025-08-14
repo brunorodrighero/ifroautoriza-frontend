@@ -87,6 +87,26 @@ const EventDetailPage = () => {
       },
   });
 
+  // NOVA FUNÇÃO PARA DOWNLOAD AUTENTICADO
+  const handleDownload = async (autorizacao) => {
+    try {
+      const response = await apiClient.get(`/autorizacoes/${autorizacao.id}/arquivo`, {
+        responseType: 'blob', // Importante para receber o arquivo
+      });
+      // Cria um link temporário e simula o clique para iniciar o download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', autorizacao.nome_arquivo_original || `autorizacao_${autorizacao.nome_aluno}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (err) {
+      toast.error("Não foi possível baixar o arquivo.");
+      console.error(err);
+    }
+  };
+
   const handleApprove = (autorizacaoId) => {
     statusMutation.mutate({ autorizacaoId, status: 'aprovado' });
   };
@@ -142,8 +162,9 @@ const EventDetailPage = () => {
     );
   }
 
-  return (
+    return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+      {/* ... (código do cabeçalho do evento sem alterações) ... */}
       <div className="mb-6">
         <Link to="/dashboard" className="text-blue-600 hover:underline">&larr; Voltar para o Dashboard</Link>
       </div>
@@ -163,7 +184,7 @@ const EventDetailPage = () => {
             </Link>
         </div>
       </div>
-
+      
       <div className="bg-white p-6 rounded-lg shadow-md">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-700 mb-3 sm:mb-0">Autorizações dos Alunos</h2>
@@ -198,15 +219,17 @@ const EventDetailPage = () => {
                       <>
                         <button onClick={() => handleApprove(auth.id)} className="text-green-600 hover:text-green-900 disabled:opacity-50" disabled={statusMutation.isPending}>Aprovar</button>
                         <button onClick={() => handleOpenRejectionModal(auth.id)} className="text-red-600 hover:text-red-900 disabled:opacity-50" disabled={statusMutation.isPending}>Rejeitar</button>
-                         <a href={`${apiClient.defaults.baseURL}/autorizacoes/${auth.id}/arquivo`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900">
+                        {/* BOTÃO CORRIGIDO */}
+                        <button onClick={() => handleDownload(auth)} className="text-indigo-600 hover:text-indigo-900">
                             Baixar
-                         </a>
+                        </button>
                       </>
                     )}
                     {(auth.status === 'aprovado' || auth.status === 'rejeitado') && auth.caminho_arquivo && (
-                         <a href={`${apiClient.defaults.baseURL}/autorizacoes/${auth.id}/arquivo`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900">
-                            Ver Arquivo
-                         </a>
+                        /* BOTÃO CORRIGIDO */
+                        <button onClick={() => handleDownload(auth)} className="text-indigo-600 hover:text-indigo-900">
+                           Ver Arquivo
+                        </button>
                     )}
                   </td>
                 </tr>
@@ -220,6 +243,7 @@ const EventDetailPage = () => {
         </div>
       </div>
 
+      {/* ... (código dos modais sem alterações) ... */}
       <Modal isOpen={rejectionModal.isOpen} onClose={() => setRejectionModal({ isOpen: false, autorizacaoId: null, motivo: '' })} title="Rejeitar Autorização">
         <form onSubmit={(e) => { e.preventDefault(); handleReject(); }}>
             <div className="space-y-4">
@@ -243,7 +267,7 @@ const EventDetailPage = () => {
         </form>
       </Modal>
 
-        <Modal isOpen={preregisterModal.isOpen} onClose={() => setPreregisterModal({ isOpen: false, nome_aluno: '', matricula_aluno: '' })} title="Pré-cadastrar Aluno">
+      <Modal isOpen={preregisterModal.isOpen} onClose={() => setPreregisterModal({ isOpen: false, nome_aluno: '', matricula_aluno: '' })} title="Pré-cadastrar Aluno">
             <form onSubmit={handlePreregisterSubmit}>
                 <div className="space-y-4">
                     <div>
