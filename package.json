@@ -3,13 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "homepage": "https://ifro-autoriza.rodighiero.com.br",
   "scripts": {
     "dev": "npm-run-all --parallel dev:vite tailwind:watch",
     "dev:vite": "vite",
     "tailwind:watch": "npx @tailwindcss/cli -i ./src/input.css -o ./src/output.css --watch",
     "build": "npx @tailwindcss/cli -i ./src/input.css -o ./src/output.css && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "@tailwindcss/cli": "^4.1.11",
@@ -32,6 +35,7 @@
     "eslint": "^9.33.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
+    "gh-pages": "^6.1.1",
     "globals": "^16.3.0",
     "npm-run-all": "^4.1.5",
     "vite": "^7.1.2"

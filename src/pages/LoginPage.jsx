@@ -32,6 +32,10 @@ const LoginPage = () => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="p-8 max-w-md w-full bg-white rounded-lg shadow-md">
+        {/* --- LOGO ADICIONADO AQUI --- */}
+        <div className="flex justify-center mb-2">
+          <img src="/IFROAutoriza_menor-removebg-preview.png" alt="Logo IFRO Autoriza" className="h-28 sm:h-32" />
+        </div>
         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">Login do Professor</h1>
         <form onSubmit={formik.handleSubmit} className="space-y-4">
           <div>
@@ -70,7 +74,6 @@ const LoginPage = () => {
             Cadastre-se
           </Link>
         </p>
-        {/* Link adicionado para a página pública */}
         <p className="mt-2 text-center text-sm text-gray-600">
           Ou{' '}
           <Link to="/eventos" className="font-medium text-blue-600 hover:text-blue-500">
