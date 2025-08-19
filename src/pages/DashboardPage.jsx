@@ -1,3 +1,4 @@
+// src/pages/DashboardPage.jsx
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -7,7 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import CreateEventModal from '../components/common/CreateEventModal';
 import EditEventModal from '../components/common/EditEventModal';
-import Modal from '../components/common/Modal'; // Importar o Modal genérico
+import Modal from '../components/common/Modal';
 
 // API Functions
 const fetchEvents = async () => {
@@ -15,7 +16,6 @@ const fetchEvents = async () => {
   return data;
 };
 
-// Nova função para deletar um evento
 const deleteEvent = async (eventId) => {
   await apiClient.delete(`/eventos/${eventId}`);
 };
@@ -24,18 +24,16 @@ const DashboardPage = () => {
   const { logout, user } = useAuth();
   const queryClient = useQueryClient();
   
-  // States para os modais
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [eventToDelete, setEventToDelete] = useState(null); // State para o modal de deleção
+  const [eventToDelete, setEventToDelete] = useState(null);
 
   const { data: events, isLoading, error } = useQuery({
     queryKey: ['events'],
     queryFn: fetchEvents,
   });
 
-  // Mutação para deletar eventos
   const deleteMutation = useMutation({
     mutationFn: deleteEvent,
     onSuccess: () => {
@@ -65,6 +63,20 @@ const DashboardPage = () => {
       deleteMutation.mutate(eventToDelete.id);
     }
   };
+
+  // --- FUNÇÃO DE FORMATAR DATA ATUALIZADA ---
+  const formatDisplayDate = (event) => {
+    // Adiciona um fuso horário para garantir que o JS interprete a data corretamente
+    const options = { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Manaus' };
+    const startDate = new Date(event.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR', options);
+
+    if (event.data_fim && event.data_fim !== event.data_inicio) {
+        const endDate = new Date(event.data_fim + 'T00:00:00').toLocaleDateString('pt-BR', options);
+        return `${startDate} a ${endDate}`;
+    }
+    
+    return startDate;
+  }
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -101,7 +113,8 @@ const DashboardPage = () => {
             <div key={event.id} className="border border-gray-200 p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center">
               <div>
                 <h3 className="text-lg font-semibold text-blue-600">{event.titulo}</h3>
-                <p className="text-sm text-gray-500">{new Date(event.data_evento).toLocaleDateString('pt-BR')} - {event.local_evento || 'Local a definir'}</p>
+                {/* --- CORREÇÃO DA DATA AQUI --- */}
+                <p className="text-sm text-gray-500">{formatDisplayDate(event)} - {event.local_evento || 'Local a definir'}</p>
                 <p className="text-sm text-gray-600 mt-1">{event.autorizacoes_count} autorizações</p>
               </div>
               <div className="mt-4 sm:mt-0 flex items-center space-x-2 flex-wrap gap-2">
@@ -114,7 +127,6 @@ const DashboardPage = () => {
                 <Link to={`/evento/detalhes/${event.id}`} className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-2 px-4 rounded">
                   Gerenciar
                 </Link>
-                {/* Botão de Deletar Evento para Admins */}
                 {user?.tipo === 'admin' && (
                   <button onClick={() => setEventToDelete(event)} className="bg-red-500 hover:bg-red-700 text-white text-sm font-bold py-2 px-4 rounded" disabled={deleteMutation.isPending}>
                     Deletar
@@ -126,7 +138,6 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Modal de Confirmação para Deletar Evento */}
       <Modal isOpen={!!eventToDelete} onClose={() => setEventToDelete(null)} title="Confirmar Exclusão de Evento">
         <div className="space-y-4">
           <p>Tem certeza que deseja deletar permanentemente o evento <strong>{eventToDelete?.titulo}</strong>?</p>

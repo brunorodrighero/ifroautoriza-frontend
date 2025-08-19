@@ -1,3 +1,4 @@
+// src/pages/PublicEventsListPage.jsx
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -15,14 +16,21 @@ const PublicEventsListPage = () => {
     queryFn: fetchPublicEvents,
   });
 
+  const formatDate = (dateString) => {
+    // Adiciona um fuso horário para evitar problemas de data "um dia antes"
+    return new Date(dateString + 'T00:00:00-04:00').toLocaleDateString('pt-BR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-grow">
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
           <header className="text-center mb-8">
-            {/* --- LOGO PRINCIPAL ATUALIZADO --- */}
             <div className="flex justify-center mb-4">
-              {/* Tamanho base h-28, e h-32 em telas pequenas (sm) ou maiores */}
               <img src="/IFROAutoriza_menor-removebg-preview.png" alt="Logo IFRO Autoriza" className="h-28 sm:h-32" />
             </div>
             <h1 className="text-3xl font-bold text-gray-800">Eventos Abertos</h1>
@@ -40,7 +48,8 @@ const PublicEventsListPage = () => {
                     <div>
                       <h3 className="text-lg font-semibold text-blue-600">{event.titulo}</h3>
                       <p className="text-sm text-gray-500">
-                        {new Date(event.data_evento).toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        {formatDate(event.data_inicio)}
+                        {event.data_fim && event.data_fim !== event.data_inicio && ` a ${formatDate(event.data_fim)}`}
                       </p>
                       <p className="text-sm text-gray-600 mt-1">📍 {event.local_evento || 'Local a definir'}</p>
                     </div>
@@ -68,10 +77,8 @@ const PublicEventsListPage = () => {
         </div>
       </main>
 
-      {/* --- RODAPÉ COM LOGO DO IFRO ATUALIZADO --- */}
       <footer className="w-full py-4 mt-2">
         <div className="container mx-auto flex justify-center items-center">
-          {/* Tamanho base h-14, e h-16 em telas pequenas (sm) ou maiores */}
           <img src="/LOGO_IFRO_ARI.png" alt="Logo IFRO Campus Ariquemes" className="h-14 sm:h-16" />
         </div>
       </footer>

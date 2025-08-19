@@ -1,3 +1,4 @@
+// src/pages/PublicEventDetailPage.jsx
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -33,6 +34,36 @@ const submitSelfRegistration = async ({ eventoId, formData }) => {
   return data;
 };
 
+// ===== Esquemas de Validação (Atualizados) =====
+const matriculaSchema = Yup.string()
+  .optional()
+  .matches(/^[0-9-]+$/, "A matrícula deve conter apenas números e, opcionalmente, um hífen.")
+  .test('min-digits', 'A matrícula deve ter no mínimo 13 dígitos.', value => {
+    if (!value) return true;
+    const digitsOnly = value.replace(/\D/g, '');
+    return digitsOnly.length >= 13;
+  });
+
+const selfRegisterSchema = Yup.object({
+    nome_aluno: Yup.string().required('O nome do aluno é obrigatório.'),
+    matricula_aluno: matriculaSchema,
+    email_aluno: Yup.string().email('Email inválido').required('O email do aluno é obrigatório.'),
+    nome_responsavel: Yup.string().required('O nome do responsável é obrigatório.'),
+    email_responsavel: Yup.string().email('Email inválido').required('O email do responsável é obrigatório.')
+        .notOneOf([Yup.ref('email_aluno'), null], 'O e-mail do responsável não pode ser igual ao do aluno.'),
+    arquivo: Yup.mixed().required('O arquivo de autorização é obrigatório.'),
+});
+
+const preregisteredSchema = Yup.object({
+    autorizacao_id: Yup.string().required('Selecione o nome do aluno.'),
+    email_aluno: Yup.string().email('Email inválido').required('O email do aluno é obrigatório.'),
+    nome_responsavel: Yup.string().required('O nome do responsável é obrigatório.'),
+    email_responsavel: Yup.string().email('Email inválido').required('O email do responsável é obrigatório.')
+        .notOneOf([Yup.ref('email_aluno'), null], 'O e-mail do responsável não pode ser igual ao do aluno.'),
+    arquivo: Yup.mixed().required('O arquivo é obrigatório.'),
+});
+
+
 // ===== Componente Principal da Página =====
 const PublicEventDetailPage = () => {
   const { linkUnico } = useParams();
@@ -61,14 +92,7 @@ const PublicEventDetailPage = () => {
 
     const formik = useFormik({
         initialValues: { nome_aluno: '', matricula_aluno: '', email_aluno: '', nome_responsavel: '', email_responsavel: '', arquivo: null },
-        validationSchema: Yup.object({
-            nome_aluno: Yup.string().required('O nome do aluno é obrigatório.'),
-            matricula_aluno: Yup.string().optional(),
-            email_aluno: Yup.string().email('Email inválido').required('O email do aluno é obrigatório.'),
-            nome_responsavel: Yup.string().required('O nome do responsável é obrigatório.'),
-            email_responsavel: Yup.string().email('Email inválido').required('O email do responsável é obrigatório.'),
-            arquivo: Yup.mixed().required('O arquivo de autorização é obrigatório.'),
-        }),
+        validationSchema: selfRegisterSchema,
         onSubmit: (values) => {
             const formData = new FormData();
             Object.keys(values).forEach(key => formData.append(key, values[key]));
@@ -80,13 +104,19 @@ const PublicEventDetailPage = () => {
         <form onSubmit={formik.handleSubmit} className="space-y-4 pt-4">
             <input name="nome_aluno" placeholder="Nome Completo do Aluno" {...formik.getFieldProps('nome_aluno')} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
             {formik.touched.nome_aluno && formik.errors.nome_aluno && <div className="text-red-500 text-xs mt-1">{formik.errors.nome_aluno}</div>}
+            
             <input name="matricula_aluno" placeholder="Matrícula (Opcional)" {...formik.getFieldProps('matricula_aluno')} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+            {formik.touched.matricula_aluno && formik.errors.matricula_aluno && <div className="text-red-500 text-xs mt-1">{formik.errors.matricula_aluno}</div>}
+
             <input name="nome_responsavel" placeholder="Nome do Responsável" {...formik.getFieldProps('nome_responsavel')} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
             {formik.touched.nome_responsavel && formik.errors.nome_responsavel && <div className="text-red-500 text-xs mt-1">{formik.errors.nome_responsavel}</div>}
+            
             <input name="email_aluno" placeholder="Email do Aluno" {...formik.getFieldProps('email_aluno')} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
             {formik.touched.email_aluno && formik.errors.email_aluno && <div className="text-red-500 text-xs mt-1">{formik.errors.email_aluno}</div>}
+            
             <input name="email_responsavel" placeholder="Email do Responsável" {...formik.getFieldProps('email_responsavel')} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
             {formik.touched.email_responsavel && formik.errors.email_responsavel && <div className="text-red-500 text-xs mt-1">{formik.errors.email_responsavel}</div>}
+            
             <label htmlFor="arquivo_self" className="block text-sm font-medium text-gray-700">Anexar Autorização Assinada</label>
             <input id="arquivo_self" name="arquivo" type="file" onChange={(event) => formik.setFieldValue("arquivo", event.currentTarget.files[0])} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
             {formik.touched.arquivo && formik.errors.arquivo && <div className="text-red-500 text-xs mt-1">{formik.errors.arquivo}</div>}
@@ -104,13 +134,7 @@ const PublicEventDetailPage = () => {
 
     const formik = useFormik({
         initialValues: { autorizacao_id: '', email_aluno: '', nome_responsavel: '', email_responsavel: '', arquivo: null },
-        validationSchema: Yup.object({
-            autorizacao_id: Yup.string().required('Selecione o nome do aluno.'),
-            email_aluno: Yup.string().email('Email inválido').required('O email do aluno é obrigatório.'),
-            nome_responsavel: Yup.string().required('O nome do responsável é obrigatório.'),
-            email_responsavel: Yup.string().email('Email inválido').required('O email do responsável é obrigatório.'),
-            arquivo: Yup.mixed().required('O arquivo é obrigatório.'),
-        }),
+        validationSchema: preregisteredSchema,
         onSubmit: (values) => {
             const formData = new FormData();
             formData.append('email_aluno', values.email_aluno);
@@ -143,6 +167,10 @@ const PublicEventDetailPage = () => {
         </form>
     );
   };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString + 'T00:00:00-04:00').toLocaleDateString('pt-BR', { dateStyle: 'long' });
+  }
   
   if (isLoadingEvent || isLoadingStudents) {
     return <div className="flex justify-center items-center h-screen"><LoadingSpinner /></div>;
@@ -181,7 +209,11 @@ const PublicEventDetailPage = () => {
       <div className="p-8 max-w-lg w-full bg-white rounded-lg shadow-md">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-800">{event.titulo}</h1>
-          <p className="text-sm text-gray-500 mt-1">{new Date(event.data_evento).toLocaleString('pt-BR', { dateStyle: 'full', timeStyle: 'short' })}</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {formatDate(event.data_inicio)}
+            {event.data_fim && ` a ${formatDate(event.data_fim)}`}
+            {event.horario && ` - ${event.horario}`}
+          </p>
           <p className="text-sm text-gray-600 mt-1">📍 {event.local_evento || 'Local a definir'}</p>
           {event.descricao && <p className="text-gray-700 mt-4">{event.descricao}</p>}
           <a href={`${apiClient.defaults.baseURL}/eventos/${event.id}/modelo/?evento_id=${event.id}`} download className="mt-6 inline-block bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded text-sm">

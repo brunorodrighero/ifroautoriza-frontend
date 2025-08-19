@@ -1,3 +1,4 @@
+// src/pages/EventDetailPage.jsx
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -6,17 +7,14 @@ import apiClient from '../api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 
-// ===== Funções de API =====
+// ===== Funções de API (sem alteração) =====
 const fetchEventDetails = async (eventoId) => {
   const { data } = await apiClient.get(`/eventos/${eventoId}`);
   return data;
 };
 
-// MANTIDO: A versão que funciona para carregar a página
 const fetchAuthorizations = async (eventoId) => {
-  const { data } = await apiClient.get(`/autorizacoes/eventos/${eventoId}/autorizacoes`, {
-    params: { event_id: eventoId }
-  });
+  const { data } = await apiClient.get(`/autorizacoes/eventos/${eventoId}/autorizacoes`);
   return data;
 };
 
@@ -25,15 +23,12 @@ const updateAuthorizationStatus = async ({ autorizacaoId, status, motivo }) => {
   return data;
 };
 
-// CORRIGIDO: Função de pré-cadastro com URL e payload corretos
 const preregisterStudent = async ({ eventoId, studentData }) => {
-    const { data } = await apiClient.post(`/autorizacoes/eventos/${eventoId}/pre-cadastrar`, studentData, {
-        params: { event_id: eventoId }
-    });
+    const { data } = await apiClient.post(`/autorizacoes/eventos/${eventoId}/pre-cadastrar`, studentData);
     return data;
 }
 
-// ===== Componente da Página =====
+// ===== Componente da Página (Layout Otimizado) =====
 const EventDetailPage = () => {
   const { eventoId: eventoIdFromParams } = useParams();
   const eventoId = parseInt(eventoIdFromParams, 10);
@@ -87,13 +82,11 @@ const EventDetailPage = () => {
       },
   });
 
-  // NOVA FUNÇÃO PARA DOWNLOAD AUTENTICADO
   const handleDownload = async (autorizacao) => {
     try {
       const response = await apiClient.get(`/autorizacoes/${autorizacao.id}/arquivo`, {
-        responseType: 'blob', // Importante para receber o arquivo
+        responseType: 'blob',
       });
-      // Cria um link temporário e simula o clique para iniciar o download
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -127,7 +120,6 @@ const EventDetailPage = () => {
     });
   };
 
-  // CORRIGIDO: Payload simplificado conforme especificação da API
   const handlePreregisterSubmit = (e) => {
     e.preventDefault();
     const payload = {
@@ -140,8 +132,21 @@ const EventDetailPage = () => {
     });
   }
 
+  const formatHeaderDate = (eventData) => {
+    if (!eventData) return '';
+    const options = { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Manaus' };
+    const startDate = new Date(eventData.data_inicio + 'T12:00:00Z').toLocaleDateString('pt-BR', options);
+
+    if (eventData.data_fim && eventData.data_fim !== eventData.data_inicio) {
+        const endDate = new Date(eventData.data_fim + 'T12:00:00Z').toLocaleDateString('pt-BR', options);
+        return `📅 ${startDate} a ${endDate}`;
+    }
+    return `📅 ${startDate}`;
+  }
+
+
   const statusStyles = {
-    'pré-cadastrado': { text: 'Pré-cadastrado', bg: 'bg-gray-100', textColor: 'text-gray-800' },
+    'pré-cadastrado': { text: 'Pré-cadastrado', bg: 'bg-gray-200', textColor: 'text-gray-800' },
     'submetido': { text: 'Submetido', bg: 'bg-yellow-100', textColor: 'text-yellow-800' },
     'aprovado': { text: 'Aprovado', bg: 'bg-green-100', textColor: 'text-green-800' },
     'rejeitado': { text: 'Rejeitado', bg: 'bg-red-100', textColor: 'text-red-800' },
@@ -164,86 +169,70 @@ const EventDetailPage = () => {
 
     return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-      {/* ... (código do cabeçalho do evento sem alterações) ... */}
       <div className="mb-6">
         <Link to="/dashboard" className="text-blue-600 hover:underline">&larr; Voltar para o Dashboard</Link>
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
             <div>
                 <h1 className="text-3xl font-bold text-gray-800">{event?.titulo}</h1>
                 <p className="text-gray-600 mt-2">{event?.descricao}</p>
                 <div className="flex flex-col sm:flex-row sm:space-x-4 text-sm text-gray-500 mt-4">
-                    <span>📅 {new Date(event?.data_evento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                    <span>{formatHeaderDate(event)}</span>
                     <span>📍 {event?.local_evento}</span>
+                    {event?.horario && <span>⏰ {event.horario}</span>}
                 </div>
             </div>
-            <Link to={`/evento/chamada/${eventoId}`} className="mt-4 sm:mt-0 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded text-sm">
+            <Link to={`/evento/chamada/${eventoId}`} className="mt-4 sm:mt-0 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded text-sm w-full sm:w-auto text-center">
                 Ir para Chamada
             </Link>
         </div>
       </div>
       
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-700 mb-3 sm:mb-0">Autorizações dos Alunos</h2>
-            <button onClick={() => setPreregisterModal({...preregisterModal, isOpen: true})} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 text-sm rounded">
+      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <h2 className="text-xl font-semibold text-gray-700">Autorizações dos Alunos</h2>
+            <button onClick={() => setPreregisterModal({...preregisterModal, isOpen: true})} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 text-sm rounded w-full sm:w-auto">
                 + Pré-cadastrar Aluno
             </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aluno</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {authorizations?.length > 0 ? authorizations.map(auth => (
-                <tr key={auth.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{auth.nome_aluno}</div>
-                    <div className="text-sm text-gray-500">{auth.matricula_aluno || 'Matrícula não informada'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusStyles[auth.status]?.bg} ${statusStyles[auth.status]?.textColor}`}>
-                      {statusStyles[auth.status]?.text}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    {auth.status === 'submetido' && (
-                      <>
-                        <button onClick={() => handleApprove(auth.id)} className="text-green-600 hover:text-green-900 disabled:opacity-50" disabled={statusMutation.isPending}>Aprovar</button>
-                        <button onClick={() => handleOpenRejectionModal(auth.id)} className="text-red-600 hover:text-red-900 disabled:opacity-50" disabled={statusMutation.isPending}>Rejeitar</button>
-                        {/* BOTÃO CORRIGIDO */}
-                        <button onClick={() => handleDownload(auth)} className="text-indigo-600 hover:text-indigo-900">
-                            Baixar
-                        </button>
-                      </>
-                    )}
-                    {(auth.status === 'aprovado' || auth.status === 'rejeitado') && auth.caminho_arquivo && (
-                        /* BOTÃO CORRIGIDO */
-                        <button onClick={() => handleDownload(auth)} className="text-indigo-600 hover:text-indigo-900">
-                           Ver Arquivo
-                        </button>
-                    )}
-                  </td>
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan="3" className="px-6 py-4 text-center text-gray-500">Nenhum aluno cadastrado para este evento ainda.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="space-y-4">
+            {authorizations?.length > 0 ? authorizations.map(auth => (
+                <div key={auth.id} className="border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+                        <div>
+                            <p className="font-bold text-gray-900">{auth.nome_aluno}</p>
+                            <p className="text-sm text-gray-500">{auth.matricula_aluno || 'Matrícula não informada'}</p>
+                        </div>
+                        <span className={`px-3 py-1 text-xs leading-5 font-semibold rounded-full ${statusStyles[auth.status]?.bg} ${statusStyles[auth.status]?.textColor}`}>
+                            {statusStyles[auth.status]?.text}
+                        </span>
+                    </div>
+
+                    <div className="border-t my-4"></div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        {auth.status === 'submetido' && (
+                            <>
+                                <button onClick={() => handleApprove(auth.id)} className="bg-green-500 hover:bg-green-600 text-white text-sm font-bold py-2 px-4 rounded flex-1 sm:flex-none" disabled={statusMutation.isPending}>Aprovar</button>
+                                <button onClick={() => handleOpenRejectionModal(auth.id)} className="bg-red-500 hover:bg-red-600 text-white text-sm font-bold py-2 px-4 rounded flex-1 sm:flex-none" disabled={statusMutation.isPending}>Rejeitar</button>
+                            </>
+                        )}
+                        {auth.caminho_arquivo && (
+                            <button onClick={() => handleDownload(auth)} className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold py-2 px-4 rounded flex-1 sm:flex-none">
+                                {auth.status === 'submetido' ? 'Baixar' : 'Ver Arquivo'}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )) : (
+                <p className="text-center text-gray-500 py-4">Nenhum aluno cadastrado para este evento ainda.</p>
+            )}
         </div>
       </div>
 
-      {/* ... (código dos modais sem alterações) ... */}
       <Modal isOpen={rejectionModal.isOpen} onClose={() => setRejectionModal({ isOpen: false, autorizacaoId: null, motivo: '' })} title="Rejeitar Autorização">
         <form onSubmit={(e) => { e.preventDefault(); handleReject(); }}>
             <div className="space-y-4">
