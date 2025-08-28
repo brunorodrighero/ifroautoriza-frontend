@@ -1,3 +1,4 @@
+// src/App.jsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -16,6 +17,7 @@ import RegisterProfessorPage from './pages/RegisterProfessorPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import VerifyCodePage from './pages/VerifyCodePage';
 import SetPasswordPage from './pages/SetPasswordPage';
+import AdminCampusPage from './pages/AdminCampusPage'; // 1. IMPORTAR A NOVA PÁGINA
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -43,6 +45,9 @@ function App() {
           
           {/* Rota de Admin */}
           <Route path="/admin/usuarios" element={<AdminProtectedRoute><AdminUsersPage /></AdminProtectedRoute>} />
+          {/* 2. ADICIONAR A NOVA ROTA DE ADMIN */}
+          <Route path="/admin/campus" element={<AdminProtectedRoute><AdminCampusPage /></AdminProtectedRoute>} />
+
           
           {/* Rota Padrão */}
           <Route 

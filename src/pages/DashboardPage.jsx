@@ -64,9 +64,7 @@ const DashboardPage = () => {
     }
   };
 
-  // --- FUNÇÃO DE FORMATAR DATA ATUALIZADA ---
   const formatDisplayDate = (event) => {
-    // Adiciona um fuso horário para garantir que o JS interprete a data corretamente
     const options = { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Manaus' };
     const startDate = new Date(event.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR', options);
 
@@ -95,9 +93,15 @@ const DashboardPage = () => {
           + Criar Novo Evento
         </button>
         {user?.tipo === 'admin' && (
-          <Link to="/admin/usuarios" className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded flex items-center">
-            Gerenciar Usuários
-          </Link>
+          <>
+            <Link to="/admin/usuarios" className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded flex items-center">
+              Gerenciar Usuários
+            </Link>
+            {/* ADICIONADO O LINK PARA GERENCIAR CAMPI */}
+            <Link to="/admin/campus" className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded flex items-center">
+              Gerenciar Campi
+            </Link>
+          </>
         )}
       </div>
 
@@ -113,7 +117,6 @@ const DashboardPage = () => {
             <div key={event.id} className="border border-gray-200 p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center">
               <div>
                 <h3 className="text-lg font-semibold text-blue-600">{event.titulo}</h3>
-                {/* --- CORREÇÃO DA DATA AQUI --- */}
                 <p className="text-sm text-gray-500">{formatDisplayDate(event)} - {event.local_evento || 'Local a definir'}</p>
                 <p className="text-sm text-gray-600 mt-1">{event.autorizacoes_count} autorizações</p>
               </div>

@@ -9,8 +9,9 @@ import apiClient from '../api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 import { useAuth } from '../hooks/useAuth';
+import { getCampuses } from '../api/campusService'; // 1. Importar serviço de campus
 
-// Funções da API
+// Funções da API (sem alteração)
 const fetchUsers = async () => {
   const { data } = await apiClient.get('/usuarios/');
   return data;
@@ -38,9 +39,16 @@ const AdminUsersPage = () => {
   const [userToDelete, setUserToDelete] = useState(null);
   const queryClient = useQueryClient();
 
-  const { data: users, isLoading, error } = useQuery({
+  const { data: users, isLoading: isLoadingUsers, error: errorUsers } = useQuery({
     queryKey: ['users'],
     queryFn: fetchUsers,
+    retry: false,
+  });
+
+  // 2. Buscar a lista de campi
+  const { data: campuses, isLoading: isLoadingCampuses } = useQuery({
+    queryKey: ['campuses'],
+    queryFn: getCampuses,
     retry: false,
   });
 
@@ -74,31 +82,41 @@ const AdminUsersPage = () => {
     onError: (err) => toast.error(err.response?.data?.detail || 'Erro ao deletar usuário.'),
   });
 
+  // 3. Atualizar formik de CRIAÇÃO
   const createFormik = useFormik({
-    initialValues: { nome: '', email: '', password: '', tipo: 'professor', ativo: true },
+    initialValues: { nome: '', email: '', password: '', tipo: 'professor', ativo: true, campus_id: '' },
     validationSchema: Yup.object({
       nome: Yup.string().required('Nome é obrigatório.'),
       email: Yup.string().email('Email inválido').required('Email é obrigatório.'),
       password: Yup.string().min(8, 'A senha deve ter no mínimo 8 caracteres').required('Senha é obrigatória.'),
       tipo: Yup.string().oneOf(['professor', 'admin']).required(),
       ativo: Yup.boolean(),
+      campus_id: Yup.number().required('O campus é obrigatório.'),
     }),
-    onSubmit: (values) => createMutation.mutate(values),
+    onSubmit: (values) => {
+      const payload = {...values, campus_id: parseInt(values.campus_id, 10)};
+      createMutation.mutate(payload);
+    },
   });
 
+  // 4. Atualizar formik de EDIÇÃO
   const editFormik = useFormik({
-    initialValues: { nome: '', email: '', password: '', tipo: 'professor', ativo: true },
+    initialValues: { nome: '', email: '', password: '', tipo: 'professor', ativo: true, campus_id: '' },
     validationSchema: Yup.object({
         nome: Yup.string().required('Nome é obrigatório.'),
         email: Yup.string().email('Email inválido').required('Email é obrigatório.'),
         password: Yup.string().min(8, 'A senha deve ter no mínimo 8 caracteres').optional().nullable(),
         tipo: Yup.string().oneOf(['professor', 'admin']).required(),
         ativo: Yup.boolean(),
+        campus_id: Yup.number().required('O campus é obrigatório.'),
     }),
     onSubmit: (values) => {
-        const payload = {...values};
+        const payload = {
+          ...values,
+          campus_id: parseInt(values.campus_id, 10)
+        };
         if (!payload.password) {
-            delete payload.password; // Não envia a senha se o campo estiver vazio
+            delete payload.password;
         }
         editMutation.mutate({ userId: selectedUser.id, userData: payload });
     }
@@ -109,9 +127,10 @@ const AdminUsersPage = () => {
         editFormik.setValues({
             nome: selectedUser.nome,
             email: selectedUser.email,
-            password: '', // Senha sempre vazia ao editar
+            password: '',
             tipo: selectedUser.tipo,
             ativo: selectedUser.ativo,
+            campus_id: selectedUser.campus_id || '', // Adicionado
         });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -129,8 +148,8 @@ const AdminUsersPage = () => {
     }
   };
   
-  if (isLoading) return <div className="flex justify-center items-center h-screen"><LoadingSpinner /></div>;
-  if (error) return (
+  if (isLoadingUsers || isLoadingCampuses) return <div className="flex justify-center items-center h-screen"><LoadingSpinner /></div>;
+  if (errorUsers) return (
       <div className="container mx-auto p-8 text-center">
         <h1 className="text-2xl font-bold text-red-600 mb-4">Acesso Negado</h1>
         <p className="text-gray-700">Você não tem permissão para acessar esta página.</p>
@@ -163,6 +182,7 @@ const AdminUsersPage = () => {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campus</th> {/* 5. Adicionar coluna */}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
@@ -173,6 +193,7 @@ const AdminUsersPage = () => {
               <tr key={user.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.nome}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.campus?.nome || 'N/A'}</td> {/* 6. Exibir nome do campus */}
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{user.tipo}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -193,6 +214,7 @@ const AdminUsersPage = () => {
         </table>
       </div>
       
+      {/* 7. Atualizar Modal de CRIAÇÃO */}
       <Modal isOpen={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} title="Criar Novo Usuário">
         <form onSubmit={createFormik.handleSubmit} className="space-y-4">
           <input id="nome" placeholder="Nome Completo" className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" {...createFormik.getFieldProps('nome')} />
@@ -204,12 +226,19 @@ const AdminUsersPage = () => {
           <input id="password" type="password" placeholder="Senha" className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" {...createFormik.getFieldProps('password')} />
           {createFormik.touched.password && createFormik.errors.password && <div className="text-red-500 text-xs mt-1">{createFormik.errors.password}</div>}
           
+          <select id="campus_id" className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" {...createFormik.getFieldProps('campus_id')}>
+            <option value="">Selecione um Campus</option>
+            {campuses?.map(campus => <option key={campus.id} value={campus.id}>{campus.nome}</option>)}
+          </select>
+          {createFormik.touched.campus_id && createFormik.errors.campus_id && <div className="text-red-500 text-xs mt-1">{createFormik.errors.campus_id}</div>}
+
           <select id="tipo" className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" {...createFormik.getFieldProps('tipo')}>
               <option value="professor">Professor</option>
               <option value="admin">Administrador</option>
           </select>
+
           <div className="flex items-center">
-            <input type="checkbox" id="ativo" className="h-4 w-4 rounded" {...createFormik.getFieldProps('ativo')} />
+            <input type="checkbox" id="ativo" className="h-4 w-4 rounded" {...createFormik.getFieldProps('ativo')} checked={createFormik.values.ativo} />
             <label htmlFor="ativo" className="ml-2 block text-sm text-gray-900">Usuário Ativo</label>
           </div>
           
@@ -222,6 +251,7 @@ const AdminUsersPage = () => {
         </form>
       </Modal>
 
+      {/* 8. Atualizar Modal de EDIÇÃO */}
       <Modal isOpen={isEditModalOpen} onClose={() => setEditModalOpen(false)} title="Editar Usuário">
         <form onSubmit={editFormik.handleSubmit} className="space-y-4">
             <input id="edit-nome" placeholder="Nome Completo" className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" {...editFormik.getFieldProps('nome')} />
@@ -233,12 +263,19 @@ const AdminUsersPage = () => {
             <input id="edit-password" type="password" placeholder="Nova Senha (deixe em branco para não alterar)" className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" {...editFormik.getFieldProps('password')} />
             {editFormik.touched.password && editFormik.errors.password && <div className="text-red-500 text-xs mt-1">{editFormik.errors.password}</div>}
             
+            <select id="edit_campus_id" className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" {...editFormik.getFieldProps('campus_id')}>
+              <option value="">Selecione um Campus</option>
+              {campuses?.map(campus => <option key={campus.id} value={campus.id}>{campus.nome}</option>)}
+            </select>
+            {editFormik.touched.campus_id && editFormik.errors.campus_id && <div className="text-red-500 text-xs mt-1">{editFormik.errors.campus_id}</div>}
+
             <select id="edit-tipo" className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" {...editFormik.getFieldProps('tipo')}>
                 <option value="professor">Professor</option>
                 <option value="admin">Administrador</option>
             </select>
+
             <div className="flex items-center">
-                <input type="checkbox" id="edit-ativo" className="h-4 w-4 rounded" {...editFormik.getFieldProps('ativo')} />
+                <input type="checkbox" id="edit-ativo" className="h-4 w-4 rounded" {...editFormik.getFieldProps('ativo')} checked={editFormik.values.ativo} />
                 <label htmlFor="edit-ativo" className="ml-2 block text-sm text-gray-900">Usuário Ativo</label>
             </div>
             

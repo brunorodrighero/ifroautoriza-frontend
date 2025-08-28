@@ -1,29 +1,57 @@
 // src/pages/PublicEventsListPage.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import apiClient from '../api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { getCampuses } from '../api/campusService';
 
-const fetchPublicEvents = async () => {
-  const { data } = await apiClient.get('/eventos/publicos');
+const fetchPublicEvents = async (campusId) => {
+  const params = {};
+  if (campusId) {
+    params.campus_id = campusId;
+  }
+  const { data } = await apiClient.get('/eventos/publicos', { params });
   return data;
 };
 
+// Componente para o botão de filtro, para evitar repetição de código
+const FilterButton = ({ label, onClick, isActive }) => (
+    <button
+        onClick={onClick}
+        className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-200 ${
+            isActive 
+            ? 'bg-blue-600 text-white shadow' 
+            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+        }`}
+    >
+        {label}
+    </button>
+);
+
+
 const PublicEventsListPage = () => {
-  const { data: events, isLoading, error } = useQuery({
-    queryKey: ['publicEvents'],
-    queryFn: fetchPublicEvents,
+  const [selectedCampus, setSelectedCampus] = useState('');
+
+  const { data: events, isLoading: isLoadingEvents, error: errorEvents } = useQuery({
+    queryKey: ['publicEvents', selectedCampus],
+    queryFn: () => fetchPublicEvents(selectedCampus),
+  });
+  
+  const { data: campuses, isLoading: isLoadingCampuses } = useQuery({
+      queryKey: ['campuses'],
+      queryFn: getCampuses,
   });
 
   const formatDate = (dateString) => {
-    // Adiciona um fuso horário para evitar problemas de data "um dia antes"
     return new Date(dateString + 'T00:00:00-04:00').toLocaleDateString('pt-BR', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
   };
+
+  const isLoading = isLoadingEvents || isLoadingCampuses;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -38,8 +66,31 @@ const PublicEventsListPage = () => {
           </header>
           
           <div className="bg-white p-6 rounded-lg shadow-md">
+            {/* 1. CONTAINER DO FILTRO CENTRALIZADO */}
+            <div className="mb-6 text-center"> {/* Adicionado text-center aqui */}
+                <p className="block text-sm font-semibold text-gray-700 mb-3">
+                    Filtrar por Campus:
+                </p>
+                <div className="flex flex-wrap justify-center gap-2"> {/* Adicionado justify-center aqui */}
+                    <FilterButton 
+                        label="Todos os Campi"
+                        onClick={() => setSelectedCampus('')}
+                        isActive={selectedCampus === ''}
+                    />
+                    {campuses?.map(campus => (
+                        <FilterButton 
+                            key={campus.id}
+                            label={campus.nome}
+                            onClick={() => setSelectedCampus(campus.id)}
+                            isActive={selectedCampus === campus.id}
+                        />
+                    ))}
+                </div>
+            </div>
+
+
             {isLoading && <LoadingSpinner />}
-            {error && <p className="text-red-500 text-center">Não foi possível carregar os eventos no momento.</p>}
+            {errorEvents && <p className="text-red-500 text-center">Não foi possível carregar os eventos no momento.</p>}
             
             <div className="space-y-4">
               {events && events.length > 0 ? (
@@ -51,7 +102,15 @@ const PublicEventsListPage = () => {
                         {formatDate(event.data_inicio)}
                         {event.data_fim && event.data_fim !== event.data_inicio && ` a ${formatDate(event.data_fim)}`}
                       </p>
-                      <p className="text-sm text-gray-600 mt-1">📍 {event.local_evento || 'Local a definir'}</p>
+                      <div className="mt-2 flex items-center text-sm text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                        </svg>
+                        <span>
+                            {event.campus?.nome || 'Campus não informado'}
+                            {event.local_evento && ` - ${event.local_evento}`}
+                        </span>
+                      </div>
                     </div>
                     <div className="mt-4 sm:mt-0">
                       <Link 
@@ -64,7 +123,7 @@ const PublicEventsListPage = () => {
                   </div>
                 ))
               ) : (
-                !isLoading && <p className="text-gray-500 text-center">Nenhum evento disponível no momento.</p>
+                !isLoading && <p className="text-gray-500 text-center">Nenhum evento encontrado para o campus selecionado.</p>
               )}
             </div>
           </div>

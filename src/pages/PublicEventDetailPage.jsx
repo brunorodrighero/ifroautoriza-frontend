@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import apiClient from '../api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
-// ===== Funções de API =====
+// ===== Funções de API (sem alteração) =====
 const fetchPublicEventByLink = async (linkUnico) => {
   const { data } = await apiClient.get(`/eventos/publico/${linkUnico}`);
   return data;
@@ -34,7 +34,7 @@ const submitSelfRegistration = async ({ eventoId, formData }) => {
   return data;
 };
 
-// ===== Esquemas de Validação (Atualizados) =====
+// ===== Esquemas de Validação (sem alteração) =====
 const matriculaSchema = Yup.string()
   .optional()
   .matches(/^[0-9-]+$/, "A matrícula deve conter apenas números e, opcionalmente, um hífen.")
@@ -82,7 +82,6 @@ const PublicEventDetailPage = () => {
     enabled: !!event?.id,
   });
 
-  // Formulários como componentes internos para acessar o estado da página principal
   const SelfRegisterForm = () => {
     const mutation = useMutation({
         mutationFn: (formData) => submitSelfRegistration({ eventoId: event.id, formData }),
@@ -214,6 +213,8 @@ const PublicEventDetailPage = () => {
             {event.data_fim && ` a ${formatDate(event.data_fim)}`}
             {event.horario && ` - ${event.horario}`}
           </p>
+          {/* 1. Adicionar exibição do campus */}
+          <p className="text-sm font-semibold text-gray-700 mt-1">🏢 {event.campus?.nome || 'Campus não informado'}</p>
           <p className="text-sm text-gray-600 mt-1">📍 {event.local_evento || 'Local a definir'}</p>
           {event.descricao && <p className="text-gray-700 mt-4">{event.descricao}</p>}
           <a href={`${apiClient.defaults.baseURL}/eventos/${event.id}/modelo/?evento_id=${event.id}`} download className="mt-6 inline-block bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded text-sm">
