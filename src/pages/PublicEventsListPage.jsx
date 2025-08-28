@@ -1,9 +1,10 @@
 // src/pages/PublicEventsListPage.jsx
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom'; // CORREÇÃO AQUI
 import apiClient from '../api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import Modal from '../components/common/Modal';
 import { getCampuses } from '../api/campusService';
 
 const fetchPublicEvents = async (campusId) => {
@@ -15,11 +16,25 @@ const fetchPublicEvents = async (campusId) => {
   return data;
 };
 
-// Componente para o botão de filtro, para evitar repetição de código
-const FilterButton = ({ label, onClick, isActive }) => (
+// Componente para o botão de filtro (Desktop)
+const DesktopFilterButton = ({ label, onClick, isActive }) => (
     <button
         onClick={onClick}
-        className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-200 ${
+        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-200 ${
+            isActive 
+            ? 'bg-blue-600 text-white shadow' 
+            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
+        }`}
+    >
+        {label}
+    </button>
+);
+
+// Componente para o botão de filtro (Modal Mobile)
+const MobileFilterButton = ({ label, onClick, isActive }) => (
+    <button
+        onClick={onClick}
+        className={`w-full text-left px-4 py-3 text-sm font-semibold rounded-md transition-colors duration-200 ${
             isActive 
             ? 'bg-blue-600 text-white shadow' 
             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -32,6 +47,7 @@ const FilterButton = ({ label, onClick, isActive }) => (
 
 const PublicEventsListPage = () => {
   const [selectedCampus, setSelectedCampus] = useState('');
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const { data: events, isLoading: isLoadingEvents, error: errorEvents } = useQuery({
     queryKey: ['publicEvents', selectedCampus],
@@ -51,7 +67,13 @@ const PublicEventsListPage = () => {
     });
   };
 
+  const handleSelectCampus = (campusId) => {
+      setSelectedCampus(campusId);
+      setIsFilterModalOpen(false);
+  }
+
   const isLoading = isLoadingEvents || isLoadingCampuses;
+  const selectedCampusName = campuses?.find(c => c.id === selectedCampus)?.nome || 'Todos os Campi';
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -66,28 +88,31 @@ const PublicEventsListPage = () => {
           </header>
           
           <div className="bg-white p-6 rounded-lg shadow-md">
-            {/* 1. CONTAINER DO FILTRO CENTRALIZADO */}
-            <div className="mb-6 text-center"> {/* Adicionado text-center aqui */}
-                <p className="block text-sm font-semibold text-gray-700 mb-3">
-                    Filtrar por Campus:
-                </p>
-                <div className="flex flex-wrap justify-center gap-2"> {/* Adicionado justify-center aqui */}
-                    <FilterButton 
-                        label="Todos os Campi"
-                        onClick={() => setSelectedCampus('')}
-                        isActive={selectedCampus === ''}
-                    />
-                    {campuses?.map(campus => (
-                        <FilterButton 
-                            key={campus.id}
-                            label={campus.nome}
-                            onClick={() => setSelectedCampus(campus.id)}
-                            isActive={selectedCampus === campus.id}
-                        />
-                    ))}
+            <div className="mb-6">
+                {/* Botão para abrir o Modal no Celular */}
+                <div className="sm:hidden">
+                    <button 
+                        onClick={() => setIsFilterModalOpen(true)}
+                        className="w-full flex justify-between items-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                        <span>Filtrar por: <strong>{selectedCampusName}</strong></span>
+                        <svg className="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* Botões visíveis e CENTRALIZADOS no Desktop */}
+                <div className="hidden sm:block text-center">
+                    <p className="block text-sm font-semibold text-gray-700 mb-3">Filtrar por Campus:</p>
+                    <div className="flex flex-wrap justify-center gap-2">
+                        <DesktopFilterButton label="Todos os Campi" onClick={() => handleSelectCampus('')} isActive={selectedCampus === ''} />
+                        {campuses?.map(campus => (
+                            <DesktopFilterButton key={campus.id} label={campus.nome} onClick={() => handleSelectCampus(campus.id)} isActive={selectedCampus === campus.id} />
+                        ))}
+                    </div>
                 </div>
             </div>
-
 
             {isLoading && <LoadingSpinner />}
             {errorEvents && <p className="text-red-500 text-center">Não foi possível carregar os eventos no momento.</p>}
@@ -141,6 +166,15 @@ const PublicEventsListPage = () => {
           <img src="/LOGO_IFRO_ARI.png" alt="Logo IFRO Campus Ariquemes" className="h-14 sm:h-16" />
         </div>
       </footer>
+
+      <Modal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} title="Filtrar por Campus">
+        <div className="space-y-2">
+            <MobileFilterButton label="Todos os Campi" onClick={() => handleSelectCampus('')} isActive={selectedCampus === ''} />
+            {campuses?.map(campus => (
+                <MobileFilterButton key={campus.id} label={campus.nome} onClick={() => handleSelectCampus(campus.id)} isActive={selectedCampus === campus.id} />
+            ))}
+        </div>
+      </Modal>
     </div>
   );
 };
