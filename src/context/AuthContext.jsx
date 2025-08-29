@@ -1,9 +1,9 @@
+// src/context/AuthContext.jsx
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import toast from 'react-hot-toast';
 import apiClient from '../api';
 
-// Exportamos o contexto para ser usado pelo hook
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -16,7 +16,7 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         const decoded = jwtDecode(token);
         if (decoded.exp * 1000 > Date.now()) {
-          setUser({ email: decoded.sub, tipo: decoded.tipo || 'professor' });
+          setUser({ email: decoded.sub, tipo: decoded.tipo || 'professor', campus_id: decoded.campus_id });
         } else {
           localStorage.removeItem('authToken');
           setUser(null);
@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
       const { access_token } = response.data;
       localStorage.setItem('authToken', access_token);
       const decoded = jwtDecode(access_token);
-      setUser({ email: decoded.sub, tipo: decoded.tipo || 'professor' });
+      setUser({ email: decoded.sub, tipo: decoded.tipo || 'professor', campus_id: decoded.campus_id });
       toast.success('Login realizado com sucesso!');
       return true;
     } catch (error) {

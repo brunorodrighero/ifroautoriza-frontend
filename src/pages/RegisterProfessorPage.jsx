@@ -1,9 +1,13 @@
+// src/pages/RegisterProfessorPage.jsx
 import React from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useQuery } from '@tanstack/react-query';
 import apiClient from '../api';
+import { getCampuses } from '../api/campusService';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 
 const RegisterSchema = Yup.object().shape({
   nome: Yup.string().required('O nome completo é obrigatório'),
@@ -13,19 +17,24 @@ const RegisterSchema = Yup.object().shape({
     .test('is-ifro-email', 'Apenas e-mails @ifro.edu.br são permitidos', (value) => {
       return value && value.endsWith('@ifro.edu.br');
     }),
+  campus_id: Yup.number().required('A seleção de um campus é obrigatória'),
 });
 
 const RegisterProfessorPage = () => {
   const navigate = useNavigate();
 
+  const { data: campuses, isLoading } = useQuery({
+      queryKey: ['campuses'],
+      queryFn: getCampuses,
+  });
+
   const formik = useFormik({
-    initialValues: { nome: '', email: '' },
+    initialValues: { nome: '', email: '', campus_id: '' },
     validationSchema: RegisterSchema,
     onSubmit: async (values, { setSubmitting }) => {
       try {
         await apiClient.post('/auth/register/request-code', values);
         toast.success('Código de verificação enviado!');
-        // Navega para a página de verificação, passando o email
         navigate('/verificar-codigo', { state: { email: values.email, flow: 'register' } });
       } catch (error) {
         toast.error(error.response?.data?.detail || 'Erro ao solicitar o código.');
@@ -34,6 +43,10 @@ const RegisterProfessorPage = () => {
       }
     },
   });
+
+  if (isLoading) {
+      return <div className="flex items-center justify-center min-h-screen"><LoadingSpinner /></div>
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -50,27 +63,23 @@ const RegisterProfessorPage = () => {
         <form onSubmit={formik.handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="nome" className="block text-sm font-medium text-gray-700">Nome Completo</label>
-            <input
-              id="nome"
-              type="text"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-              {...formik.getFieldProps('nome')}
-            />
-            {formik.touched.nome && formik.errors.nome ? (
-              <div className="text-red-500 text-xs mt-1">{formik.errors.nome}</div>
-            ) : null}
+            <input id="nome" type="text" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" {...formik.getFieldProps('nome')} />
+            {formik.touched.nome && formik.errors.nome ? (<div className="text-red-500 text-xs mt-1">{formik.errors.nome}</div>) : null}
           </div>
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Institucional</label>
-            <input
-              id="email"
-              type="email"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-              {...formik.getFieldProps('email')}
-            />
-            {formik.touched.email && formik.errors.email ? (
-              <div className="text-red-500 text-xs mt-1">{formik.errors.email}</div>
-            ) : null}
+            <input id="email" type="email" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" {...formik.getFieldProps('email')} />
+            {formik.touched.email && formik.errors.email ? (<div className="text-red-500 text-xs mt-1">{formik.errors.email}</div>) : null}
+          </div>
+          <div>
+            <label htmlFor="campus_id" className="block text-sm font-medium text-gray-700">Seu Campus</label>
+            <select id="campus_id" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" {...formik.getFieldProps('campus_id')}>
+                <option value="">Selecione seu campus</option>
+                {campuses?.map(campus => (
+                    <option key={campus.id} value={campus.id}>{campus.nome}</option>
+                ))}
+            </select>
+            {formik.touched.campus_id && formik.errors.campus_id ? (<div className="text-red-500 text-xs mt-1">{formik.errors.campus_id}</div>) : null}
           </div>
           <button type="submit" disabled={formik.isSubmitting} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300">
             {formik.isSubmitting ? 'Enviando...' : 'Receber Código por E-mail'}

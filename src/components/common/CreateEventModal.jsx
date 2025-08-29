@@ -1,15 +1,15 @@
 // src/components/common/CreateEventModal.jsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import apiClient from '../../api';
 import Modal from './Modal';
-import { getCampuses } from '../../api/campusService'; // 1. Importar
+import { getCampuses } from '../../api/campusService';
 import LoadingSpinner from './LoadingSpinner';
+import { useAuth } from '../../hooks/useAuth';
 
-// 2. Atualizar o Schema
 const EventSchema = Yup.object().shape({
   titulo: Yup.string().min(3, 'O título é muito curto!').max(255, 'O título é muito longo!').required('O título é obrigatório'),
   descricao: Yup.string().optional(),
@@ -17,7 +17,7 @@ const EventSchema = Yup.object().shape({
   data_fim: Yup.date().optional().min(Yup.ref('data_inicio'), 'A data final não pode ser anterior à data de início.'),
   horario: Yup.string().optional(),
   local_evento: Yup.string().max(500, 'O local é muito longo!').optional(),
-  campus_id: Yup.number().required('A seleção de um campus é obrigatória'), // Adicionado
+  campus_id: Yup.number().required('A seleção de um campus é obrigatória'),
 });
 
 const createEvent = async (eventData) => {
@@ -27,8 +27,8 @@ const createEvent = async (eventData) => {
 
 const CreateEventModal = ({ isOpen, onClose }) => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  // 3. Buscar a lista de campi
   const { data: campuses, isLoading: isLoadingCampuses } = useQuery({
     queryKey: ['campuses'],
     queryFn: getCampuses,
@@ -39,7 +39,7 @@ const CreateEventModal = ({ isOpen, onClose }) => {
     onSuccess: () => {
       toast.success('Evento criado com sucesso!');
       queryClient.invalidateQueries({ queryKey: ['events'] });
-      onClose(); // Fechar o modal original
+      onClose();
     },
     onError: (error) => {
       toast.error(error.response?.data?.detail || 'Erro ao criar o evento.');
@@ -54,7 +54,7 @@ const CreateEventModal = ({ isOpen, onClose }) => {
       data_fim: '',
       horario: '',
       local_evento: '',
-      campus_id: '', // Adicionado
+      campus_id: user?.campus_id || '',
     },
     validationSchema: EventSchema,
     onSubmit: (values) => {
@@ -65,19 +65,25 @@ const CreateEventModal = ({ isOpen, onClose }) => {
       };
       mutation.mutate(formattedValues);
     },
+    enableReinitialize: true,
   });
 
-  // Criar uma função de fechamento que também reseta o formik
-  const handleClose = () => {
-    formik.resetForm();
-    onClose();
-  };
+  useEffect(() => {
+    if (!isOpen) {
+      formik.resetForm({
+        values: {
+          ...formik.initialValues,
+          campus_id: user?.campus_id || ''
+        }
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, user]);
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Criar Novo Evento">
+    <Modal isOpen={isOpen} onClose={onClose} title="Criar Novo Evento">
       {isLoadingCampuses ? <LoadingSpinner /> : (
         <form onSubmit={formik.handleSubmit} className="space-y-4">
-          {/* 4. Adicionar o campo de seleção de Campus */}
           <div>
             <label htmlFor="campus_id" className="block text-sm font-medium text-gray-700">Campus</label>
             <select
@@ -130,7 +136,7 @@ const CreateEventModal = ({ isOpen, onClose }) => {
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
-            <button type="button" onClick={handleClose} className="py-2 px-4 rounded-md text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200">
+            <button type="button" onClick={onClose} className="py-2 px-4 rounded-md text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200">
               Cancelar
             </button>
             <button type="submit" disabled={mutation.isPending} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300">
