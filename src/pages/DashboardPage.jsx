@@ -28,6 +28,7 @@ const DashboardPage = () => {
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [eventToDelete, setEventToDelete] = useState(null);
+  const [deleteConfirmationInput, setDeleteConfirmationInput] = useState(''); // 1. Estado para o input de confirmação
 
   const { data: events, isLoading, error } = useQuery({
     queryKey: ['events'],
@@ -59,10 +60,18 @@ const DashboardPage = () => {
   };
   
   const handleConfirmDelete = () => {
-    if (eventToDelete) {
+    if (eventToDelete && deleteConfirmationInput === eventToDelete.titulo) {
       deleteMutation.mutate(eventToDelete.id);
+    } else {
+      toast.error("O nome do evento digitado não confere.");
     }
   };
+
+  // Limpa o input ao fechar o modal de deleção
+  const handleCloseDeleteModal = () => {
+    setEventToDelete(null);
+    setDeleteConfirmationInput('');
+  }
 
   const formatDisplayDate = (event) => {
     const options = { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Manaus' };
@@ -97,7 +106,6 @@ const DashboardPage = () => {
             <Link to="/admin/usuarios" className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded flex items-center">
               Gerenciar Usuários
             </Link>
-            {/* ADICIONADO O LINK PARA GERENCIAR CAMPI */}
             <Link to="/admin/campus" className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded flex items-center">
               Gerenciar Campi
             </Link>
@@ -130,27 +138,41 @@ const DashboardPage = () => {
                 <Link to={`/evento/detalhes/${event.id}`} className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-2 px-4 rounded">
                   Gerenciar
                 </Link>
-                {user?.tipo === 'admin' && (
-                  <button onClick={() => setEventToDelete(event)} className="bg-red-500 hover:bg-red-700 text-white text-sm font-bold py-2 px-4 rounded" disabled={deleteMutation.isPending}>
-                    Deletar
-                  </button>
-                )}
+                {/* 2. Botão de deletar agora é visível para o criador do evento ou para o admin */}
+                <button onClick={() => setEventToDelete(event)} className="bg-red-500 hover:bg-red-700 text-white text-sm font-bold py-2 px-4 rounded" disabled={deleteMutation.isPending}>
+                  Deletar
+                </button>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      <Modal isOpen={!!eventToDelete} onClose={() => setEventToDelete(null)} title="Confirmar Exclusão de Evento">
+      {/* 3. NOVO MODAL DE CONFIRMAÇÃO DE SEGURANÇA */}
+      <Modal isOpen={!!eventToDelete} onClose={handleCloseDeleteModal} title="Confirmar Exclusão de Evento">
         <div className="space-y-4">
-          <p>Tem certeza que deseja deletar permanentemente o evento <strong>{eventToDelete?.titulo}</strong>?</p>
-          <p className="text-sm font-medium text-red-600">Atenção: Todas as autorizações e arquivos associados a este evento serão perdidos. Esta ação não pode ser desfeita.</p>
+          <p className="text-sm text-gray-700">
+            Esta ação é irreversível e deletará permanentemente o evento <strong>{eventToDelete?.titulo}</strong>, junto com todas as suas autorizações e arquivos.
+          </p>
+          <p className="text-sm font-medium text-gray-800">
+            Para confirmar, por favor, digite o título exato do evento abaixo:
+          </p>
+          <input
+            type="text"
+            value={deleteConfirmationInput}
+            onChange={(e) => setDeleteConfirmationInput(e.target.value)}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+          />
           <div className="flex justify-end space-x-2 pt-4">
-            <button type="button" onClick={() => setEventToDelete(null)} className="py-2 px-4 rounded-md text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200">
+            <button type="button" onClick={handleCloseDeleteModal} className="py-2 px-4 rounded-md text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200">
               Cancelar
             </button>
-            <button onClick={handleConfirmDelete} disabled={deleteMutation.isPending} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50">
-              {deleteMutation.isPending ? 'Deletando...' : 'Deletar Evento'}
+            <button 
+              onClick={handleConfirmDelete} 
+              disabled={deleteMutation.isPending || deleteConfirmationInput !== eventToDelete?.titulo} 
+              className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed"
+            >
+              {deleteMutation.isPending ? 'Deletando...' : 'Deletar Evento Permanentemente'}
             </button>
           </div>
         </div>
